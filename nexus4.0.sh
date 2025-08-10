@@ -3,6 +3,8 @@
 # 定义项目目录
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_ROOT_DIR="$SCRIPT_DIR/nexus-node"
+### 唯一的改动点 1: 定义配置文件路径 ###
+CONFIG_FILE="$PROJECT_ROOT_DIR/data/node_config.conf"
 
 # 函数：检查并安装依赖
 function check_and_install_dependencies() {
@@ -13,7 +15,7 @@ function check_and_install_dependencies() {
         echo "Rust 和 Cargo 未安装，正在安装..."
         curl https://sh.rustup.rs -sSf | sh -s -- -y
         source $HOME/.cargo/env
-        echo "Rust 和 Cargo 安装完成。"
+        echo "Rust 和 Cargo 安装完成 。"
     else
         echo "Rust 和 Cargo 已安装。"
     fi
@@ -45,7 +47,9 @@ function show_menu() {
     echo "1. 安装/更新并启动节点"
     echo "2. 停止并删除节点"
     echo "3. 查看节点日志"
-    echo "4. 退出"
+    ### 唯一的改动点 2: 增加菜单选项 ###
+    echo "4. 显示当前配置"
+    echo "5. 退出"
     echo "========================================"
 }
 
@@ -75,7 +79,7 @@ function install_and_start_node() {
 
     read -rp "请输入您的 Node ID: " NODE_ID
     if [ -z "$NODE_ID" ]; then
-        echo "Node ID 不能为空，操作取消。"
+        echo "Node ID 不能为空 ，操作取消。"
         return
     fi
 
@@ -84,6 +88,10 @@ function install_and_start_node() {
         echo "线程数必须是大于0的整数，操作取消。"
         return
     fi
+
+    ### 唯一的改动点 3: 启动前，覆盖保存配置 ###
+    echo "NODE_ID=$NODE_ID" > "$CONFIG_FILE"
+    echo "MAX_THREADS=$MAX_THREADS" >> "$CONFIG_FILE"
 
     # 检查是否有正在运行的会话，如果有则杀死
     if tmux has-session -t nexus_node &> /dev/null; then
@@ -135,7 +143,7 @@ function stop_and_delete_node() {
     echo "节点已停止并删除。"
 }
 
-# 函数：查看节点日志
+# 函数：查看节点日志 (保持您原来的逻辑)
 function view_node_logs() {
     echo "正在查看节点日志..."
     if [ -f "$PROJECT_ROOT_DIR/logs/nexus_node.log" ]; then
@@ -143,6 +151,19 @@ function view_node_logs() {
         tail -f "$PROJECT_ROOT_DIR/logs/nexus_node.log"
     else
         echo "日志文件 $PROJECT_ROOT_DIR/logs/nexus_node.log 不存在。请先启动节点。"
+    fi
+}
+
+### 唯一的改动点 4: 新增一个函数用于显示配置 ###
+function show_current_config() {
+    echo "--- 当前节点配置 ---"
+    if [ -f "$CONFIG_FILE" ]; then
+        cat "$CONFIG_FILE"
+        echo "----------------------"
+        echo "注意：这是您上一次启动节点时保存的配置。"
+    else
+        echo "未找到配置文件。请先启动一次节点。"
+        echo "----------------------"
     fi
 }
 
@@ -154,13 +175,10 @@ while true; do
         1) install_and_start_node ;;
         2) stop_and_delete_node ;;
         3) view_node_logs ;;
-        4) echo "退出脚本。"; exit 0 ;;
+        ### 唯一的改动点 5: 增加 case 选项 ###
+        4) show_current_config ;;
+        5) echo "退出脚本。"; exit 0 ;;
         *) echo "无效选项，请重新选择。" ;;
     esac
     read -rp "按 Enter 键继续..."
 done
-
-
-
-
-
