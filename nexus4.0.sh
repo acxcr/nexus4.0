@@ -168,6 +168,11 @@ while true; do
         6) echo "退出脚本。"; exit 0 ;;
         *) echo "无效选项，请重新选择。" ;;
     esac
+    
+    # 选项5执行后暂停，避免立即清屏
+    if [ "$choice" = "5" ]; then
+        continue
+    fi
     # 在 attach 返回后，需要清屏并提示返回菜单
     if [ "$choice" = "3" ]; then
         clear
