@@ -4,7 +4,7 @@
 # 全局变量定义
 # ==============================================================================
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PROJECT_ROOT_DIR="$SCRIPT_DIR/nexus-node"
+PROJECT_ROOT_DIR="$HOME/.nexus"
 CONFIG_FILE="$PROJECT_ROOT_DIR/data/node_configs.conf"
 # 日志目录仍然保留，用于捕获启动时的错误，但主要查看方式已改变
 LOGS_DIR="$PROJECT_ROOT_DIR/logs"
@@ -22,7 +22,7 @@ function check_and_install_dependencies() {
         echo "Rust 和 Cargo 已安装。"
     fi
 
-    REQUIRED_PACKAGES="build-essential pkg-config libssl-dev clang cmake git protobuf-compiler tmux"
+    REQUIRED_PACKAGES="tmux curl"
     PACKAGES_TO_INSTALL=""
     for pkg in $REQUIRED_PACKAGES; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
@@ -58,17 +58,21 @@ function install_and_start_node() {
     
     mkdir -p "$PROJECT_ROOT_DIR" "$LOGS_DIR" "$PROJECT_ROOT_DIR/data"
 
-    if [ -d "$PROJECT_ROOT_DIR/nexus-cli" ]; then
-        echo "检测到现有仓库，正在更新..."; cd "$PROJECT_ROOT_DIR/nexus-cli" && git pull
-    else
-        echo "克隆 Nexus CLI 仓库..."; git clone https://github.com/nexus-xyz/nexus-cli.git "$PROJECT_ROOT_DIR/nexus-cli"
+    # 检查官方版本是否已安装
+    if ! command -v nexus-network &> /dev/null; then
+        echo "未检测到官方版本，正在安装..."
+        curl https://cli.nexus.xyz/ | sh
+        if [ $? -ne 0 ]; then
+            echo "官方版本安装失败，请检查网络连接。"
+            return 1
+        fi
+        echo "正在刷新环境变量..."
+        source ~/.profile 2>/dev/null || source ~/.bashrc 2>/dev/null || true
+        echo "环境变量已刷新，继续执行..."
     fi
     
-    cd "$PROJECT_ROOT_DIR/nexus-cli/clients/cli"
-    echo "编译 Nexus CLI (这可能需要一些时间 )..."; cargo build --release
-    
-    local cli_path="$PROJECT_ROOT_DIR/nexus-cli/clients/cli/target/release/nexus-network"
-    if [ ! -f "$cli_path" ]; then echo "错误：编译失败！找不到可执行文件: $cli_path"; return 1; fi
+    echo "检测到官方安装的 nexus-network，使用官方版本"
+    local cli_path="nexus-network"
     
     echo "请输入您要运行的所有 Node ID，用空格隔开，然后按 Enter:"; read -ra NODE_IDS
     if [ ${#NODE_IDS[@]} -eq 0 ]; then echo "未输入任何 Node ID，操作取消。"; return; fi
@@ -144,12 +148,8 @@ function show_current_config() {
 # 函数：彻底卸载和清理 (无变动)
 function uninstall_and_clean() {
     stop_all_nodes
-    if [ -d "$PROJECT_ROOT_DIR" ]; then
-        read -rp "警告：此操作将删除整个项目目录 ($PROJECT_ROOT_DIR)，包括所有配置。确定吗？[y/N]: " confirm
-        if [[ "$confirm" =~ ^[yY]$ ]]; then echo "正在删除项目目录..."; rm -rf "$PROJECT_ROOT_DIR"; echo "项目目录已删除。"; else echo "删除操作已取消。"; fi
-    else
-        echo "项目目录 $PROJECT_ROOT_DIR 不存在。"
-    fi
+    rm -rf "$PROJECT_ROOT_DIR"
+    echo "所有项目数据已删除。"
 }
 
 # ==============================================================================
@@ -168,7 +168,9 @@ while true; do
         *) echo "无效选项，请重新选择。" ;;
     esac
     # 在 attach 返回后，需要清屏并提示返回菜单
-    clear
-    echo "已从 tmux 会话返回。"
-    read -n 1 -s -r -p "按任意键返回主菜单..."
+    if [ "$choice" = "3" ]; then
+        clear
+        echo "已从 tmux 会话返回。"
+        read -n 1 -s -r -p "按任意键返回主菜单..."
+    fi
 done
