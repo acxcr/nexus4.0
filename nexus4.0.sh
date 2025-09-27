@@ -72,7 +72,7 @@ function install_and_start_node() {
     fi
     
     echo "检测到官方安装的 nexus-network，使用官方版本"
-    local cli_path="nexus-network"
+    local cli_path="$HOME/.nexus/bin/nexus-network"
     
     echo "请输入您要运行的所有 Node ID，用空格隔开，然后按 Enter:"; read -ra NODE_IDS
     if [ ${#NODE_IDS[@]} -eq 0 ]; then echo "未输入任何 Node ID，操作取消。"; return; fi
