@@ -150,6 +150,7 @@ function uninstall_and_clean() {
     stop_all_nodes
     rm -rf "$PROJECT_ROOT_DIR"
     echo "所有项目数据已删除。"
+    read -n 1 -s -r -p "按任意键返回主菜单..."
 }
 
 # ==============================================================================
